@@ -28,7 +28,7 @@ groups:
           description: "CPU utilisation is {{ $value | humanizePercentage }} (threshold: 80%)"
           value: "{{ $value | humanizePercentage }}"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/node-exporter/node-exporter"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-cpu.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/high-cpu.md"
 
       - alert: HighCPUCritical
         expr: sli:node_cpu_saturation > 0.90
@@ -40,7 +40,7 @@ groups:
           description: "CPU utilisation is {{ $value | humanizePercentage }} (threshold: 90%) for 10+ minutes"
           value: "{{ $value | humanizePercentage }}"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/node-exporter/node-exporter"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-cpu.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/high-cpu.md"
 
       # ── Memory alerts ────────────────────────────────────────────────────────
       - alert: HighMemoryWarning
@@ -53,7 +53,7 @@ groups:
           description: "Memory utilisation is {{ $value | humanizePercentage }} (threshold: 80%)"
           value: "{{ $value | humanizePercentage }}"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/node-exporter/node-exporter"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-memory.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/high-memory.md"
 
       - alert: HighMemoryCritical
         expr: sli:node_memory_saturation > 0.90
@@ -65,7 +65,7 @@ groups:
           description: "Memory utilisation is {{ $value | humanizePercentage }} (threshold: 90%)"
           value: "{{ $value | humanizePercentage }}"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/node-exporter/node-exporter"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-memory.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/high-memory.md"
 
       # ── Disk alerts ──────────────────────────────────────────────────────────
       - alert: DiskSpaceWarning
@@ -78,7 +78,7 @@ groups:
           description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.mountpoint }}"
           value: "{{ $value | humanizePercentage }}"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/node-exporter/node-exporter"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/disk-space.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/disk-space.md"
 
       - alert: DiskSpaceCritical
         expr: sli:node_disk_usage > 0.90
@@ -90,7 +90,7 @@ groups:
           description: "Disk usage is {{ $value | humanizePercentage }} — system may become unresponsive soon"
           value: "{{ $value | humanizePercentage }}"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/node-exporter/node-exporter"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/disk-space.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/disk-space.md"
 
       # ── Host down (via Blackbox) ─────────────────────────────────────────────
       - alert: HostDown
@@ -103,7 +103,7 @@ groups:
           description: "Blackbox probe failed for 2+ consecutive minutes. Service may be completely unreachable."
           value: "probe_success=0"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/blackbox/blackbox-exporter"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/host-down.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/host-down.md"
 
       - alert: SSLCertExpiringSoon
         expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 14
@@ -114,4 +114,4 @@ groups:
           summary: "SSL certificate expiring on {{ $labels.instance }}"
           description: "Certificate expires in {{ $value | humanizeDuration }}"
           value: "{{ $value | humanizeDuration }}"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/ssl-expiry.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/ssl-expiry.md"

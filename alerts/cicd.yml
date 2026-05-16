@@ -40,7 +40,7 @@ groups:
             DORA classification: Low performer. Review recent deployments for patterns.
           value: "{{ $value | humanizePercentage }}"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/dora/dora-metrics"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-cfr.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/high-cfr.md"
 
       # ── MTTR exceeds 1 hour ──────────────────────────────────────────────────
       - alert: CICDHighMTTR
@@ -56,7 +56,7 @@ groups:
             Review on-call process and runbook quality.
           value: "{{ $value | humanizeDuration }}"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/dora/dora-metrics"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-mttr.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/high-mttr.md"
 
       # ── Deployment pipeline failed ───────────────────────────────────────────
       - alert: CICDDeploymentFailed
@@ -70,4 +70,4 @@ groups:
             A deployment on workflow '{{ $labels.workflow }}' has failed.
             Check GitHub Actions for the failed run. CFR SLO may be impacted.
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/dora/dora-metrics"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/deployment-failed.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/deployment-failed.md"
