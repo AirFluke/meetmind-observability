@@ -1,6 +1,6 @@
 {
   "uid": "dora-metrics",
-  "title": "DORA Metrics",
+  "title": "DORA Metrics — Engineering Performance",
   "tags": ["dora", "cicd", "reliability"],
   "timezone": "browser",
   "refresh": "1m",
@@ -8,77 +8,165 @@
   "panels": [
     {
       "id": 1,
-      "title": "Deployment Frequency (last 24h)",
+      "title": "Deployment Frequency (24h)",
       "type": "stat",
-      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(increase(deployment_total[24h]))",
+        "expr": "sum(increase(deployment_total[24h])) OR vector(0)",
         "legendFormat": "Deployments"
       }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "background",
-        "thresholds": {
-          "steps": [
-            { "value": null, "color": "red" },
-            { "value": 1, "color": "yellow" },
-            { "value": 3, "color": "green" }
-          ]
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 1, "color": "yellow" },
+              { "value": 3, "color": "green" }
+            ]
+          }
         }
       }
     },
     {
-      "id": 2,
-      "title": "DORA classification",
-      "type": "text",
-      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
-      "options": {
-        "mode": "markdown",
-        "content": "| Metric | Value | DORA Class |\n|--------|-------|------------|\n| Deploy Freq | Daily | **Elite** |\n| Lead Time | < 1h | **Elite** |\n| CFR | < 5% | **Elite** |\n| MTTR | < 1h | **Elite** |"
-      }
-    },
-    {
       "id": 3,
-      "title": "Change Failure Rate (7d rolling)",
+      "title": "Change Failure Rate (7d)",
       "type": "stat",
-      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "dora:change_failure_rate:ratio7d * 100",
+        "expr": "dora:change_failure_rate:ratio7d * 100 OR vector(0)",
         "legendFormat": "CFR %"
       }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "unit": "percent",
-        "thresholds": {
-          "steps": [
-            { "value": null, "color": "green" },
-            { "value": 15, "color": "yellow" },
-            { "value": 45, "color": "red" }
-          ]
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "decimals": 1,
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 15, "color": "yellow" },
+              { "value": 46, "color": "red" }
+            ]
+          }
         }
       }
     },
     {
       "id": 4,
-      "title": "Mean Time to Restore (7d avg)",
+      "title": "Mean Time to Restore",
       "type": "stat",
-      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 5 },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "dora:mttr:avg7d",
+        "expr": "dora:mttr:avg7d OR vector(0)",
         "legendFormat": "MTTR"
       }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "unit": "s",
-        "thresholds": {
-          "steps": [
-            { "value": null, "color": "green" },
-            { "value": 3600, "color": "yellow" },
-            { "value": 86400, "color": "red" }
-          ]
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 3600, "color": "yellow" },
+              { "value": 86400, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "DORA Benchmark Classification",
+      "type": "text",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 5 },
+      "options": {
+        "mode": "markdown",
+        "content": "## DORA Benchmarks\n\n| Metric | Elite | High | Medium | Low |\n|--------|-------|------|--------|-----|\n| **DF** | On-demand | 1/day–1/wk | 1/wk–1/mo | >1/mo |\n| **LTC** | <1 day | 1d–1wk | 1wk–1mo | >1mo |\n| **CFR** | <5% | 5–10% | 10–15% | >15% |\n| **MTTR** | <1h | <1 day | <1 wk | >1 wk |\n\n*Source: DORA State of DevOps*"
+      }
+    },
+    {
+      "id": 20,
+      "title": "DF Classification",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 5, "w": 6, "h": 3 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(increase(deployment_total[24h])) OR vector(0)",
+        "legendFormat": "DF"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value_and_name" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "range", "options": { "from": 3, "to": 999, "result": { "text": "ELITE", "color": "green" } } },
+            { "type": "range", "options": { "from": 1, "to": 3, "result": { "text": "HIGH", "color": "blue" } } },
+            { "type": "range", "options": { "from": 0.1, "to": 1, "result": { "text": "MEDIUM", "color": "yellow" } } },
+            { "type": "range", "options": { "from": 0, "to": 0.1, "result": { "text": "LOW", "color": "red" } } }
+          ],
+          "thresholds": { "steps": [{ "value": null, "color": "transparent" }] }
+        }
+      }
+    },
+    {
+      "id": 21,
+      "title": "CFR Classification",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 5, "w": 6, "h": 3 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "dora:change_failure_rate:ratio7d * 100 OR vector(0)",
+        "legendFormat": "CFR"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value_and_name" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "mappings": [
+            { "type": "range", "options": { "from": 0, "to": 5, "result": { "text": "ELITE", "color": "green" } } },
+            { "type": "range", "options": { "from": 5, "to": 10, "result": { "text": "HIGH", "color": "blue" } } },
+            { "type": "range", "options": { "from": 10, "to": 15, "result": { "text": "MEDIUM", "color": "yellow" } } },
+            { "type": "range", "options": { "from": 15, "to": 100, "result": { "text": "LOW", "color": "red" } } }
+          ],
+          "thresholds": { "steps": [{ "value": null, "color": "transparent" }] }
+        }
+      }
+    },
+    {
+      "id": 22,
+      "title": "MTTR Classification",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 5, "w": 6, "h": 3 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "dora:mttr:avg7d OR vector(0)",
+        "legendFormat": "MTTR"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value_and_name" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "mappings": [
+            { "type": "range", "options": { "from": 0, "to": 3600, "result": { "text": "ELITE", "color": "green" } } },
+            { "type": "range", "options": { "from": 3600, "to": 86400, "result": { "text": "HIGH", "color": "blue" } } },
+            { "type": "range", "options": { "from": 86400, "to": 604800, "result": { "text": "MEDIUM", "color": "yellow" } } },
+            { "type": "range", "options": { "from": 604800, "to": 9999999, "result": { "text": "LOW", "color": "red" } } }
+          ],
+          "thresholds": { "steps": [{ "value": null, "color": "transparent" }] }
         }
       }
     },
@@ -86,28 +174,117 @@
       "id": 5,
       "title": "Deployment frequency trend",
       "type": "timeseries",
-      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(increase(deployment_total[1h])) by (workflow)",
-        "legendFormat": "{{ workflow }}"
-      }],
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(increase(deployment_total{status=\"success\"}[1h])) by (workflow)",
+          "legendFormat": "Success — {{ workflow }}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(increase(deployment_total{status=\"failure\"}[1h])) by (workflow)",
+          "legendFormat": "Failure — {{ workflow }}"
+        }
+      ],
       "fieldConfig": {
-        "defaults": { "unit": "short", "custom": { "drawStyle": "bars" } }
+        "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 0 } },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "Success.*" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "Failure.*" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          }
+        ]
       }
     },
     {
       "id": 6,
-      "title": "Lead time for changes (p95)",
+      "title": "Lead time for changes",
       "type": "timeseries",
-      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "histogram_quantile(0.95, sum(rate(deployment_lead_time_seconds_bucket[1h])) by (le))",
-        "legendFormat": "p95 lead time"
+        "expr": "deployment_lead_time_seconds",
+        "legendFormat": "{{ workflow }} — {{ commit }}"
       }],
       "fieldConfig": {
-        "defaults": { "unit": "s" }
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "points", "pointSize": 8 },
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 3600, "color": "yellow" },
+              { "value": 86400, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Change failure rate trend (7d rolling)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "dora:change_failure_rate:ratio7d * 100",
+          "legendFormat": "CFR %"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "vector(15)",
+          "legendFormat": "SLO Threshold (15%)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": [{
+          "matcher": { "id": "byName", "options": "SLO Threshold (15%)" },
+          "properties": [
+            { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+            { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+          ]
+        }]
+      }
+    },
+    {
+      "id": 8,
+      "title": "MTTR trend",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "dora:mttr:avg7d",
+          "legendFormat": "MTTR (7d avg)"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "vector(3600)",
+          "legendFormat": "Elite threshold (1h)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": [{
+          "matcher": { "id": "byName", "options": "Elite threshold (1h)" },
+          "properties": [
+            { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+            { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+          ]
+        }]
       }
     }
   ],

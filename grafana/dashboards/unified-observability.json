@@ -1,7 +1,7 @@
 {
   "uid": "unified-observability",
   "title": "Unified Observability — Metrics, Logs, Traces",
-  "tags": ["unified", "correlation", "traces", "logs"],
+  "tags": ["unified", "correlation", "traces", "logs", "golden-signals"],
   "timezone": "browser",
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
@@ -16,10 +16,21 @@
   },
   "panels": [
     {
+      "id": 100,
+      "title": "",
+      "type": "text",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 2 },
+      "options": {
+        "mode": "markdown",
+        "content": "## Four Golden Signals\nClick any metric spike → scroll to **Logs** panel → click trace ID → drill into **Tempo** trace. Deployment annotations shown as blue lines."
+      }
+    },
+    {
       "id": 1,
-      "title": "Error rate — click spike to see correlated logs",
+      "title": "Errors — error rate (5m)",
+      "description": "Golden Signal: Errors. Click a spike to correlate with logs below.",
       "type": "timeseries",
-      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 2, "w": 12, "h": 8 },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "prometheus" },
         "expr": "slo:error_rate:ratio_rate5m * 100",
@@ -34,24 +45,32 @@
               { "value": 1, "color": "red" }
             ]
           },
-          "custom": { "thresholdsStyle": { "mode": "line" } },
+          "custom": { "thresholdsStyle": { "mode": "line" }, "fillOpacity": 15, "lineWidth": 2 },
           "links": [{
-            "title": "See correlated logs in Loki",
-            "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22expr%22:%22%7Blevel%3D~%22error%7Cwarn%22%7D%22%7D%5D%7D"
+            "title": "🔍 See correlated logs in Loki",
+            "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22expr%22:%22%7Blevel%3D~%5C%22error%7Cwarn%5C%22%7D%22%7D%5D%7D"
           }]
         }
       }
     },
     {
       "id": 2,
-      "title": "p95 latency",
+      "title": "Latency — p95 request duration",
+      "description": "Golden Signal: Latency. SLO target: 500ms.",
       "type": "timeseries",
-      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "slo:latency:p95_rate5m * 1000",
-        "legendFormat": "p95 latency (ms)"
-      }],
+      "gridPos": { "x": 12, "y": 2, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "slo:latency:p95_rate5m * 1000",
+          "legendFormat": "p95 latency (ms)"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "vector(500)",
+          "legendFormat": "SLO target (500ms)"
+        }
+      ],
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
@@ -61,15 +80,85 @@
               { "value": 500, "color": "red" }
             ]
           },
-          "custom": { "thresholdsStyle": { "mode": "line" } }
+          "custom": { "thresholdsStyle": { "mode": "line" }, "fillOpacity": 10, "lineWidth": 2 }
+        },
+        "overrides": [{
+          "matcher": { "id": "byName", "options": "SLO target (500ms)" },
+          "properties": [
+            { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+            { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+          ]
+        }]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Traffic — requests per second",
+      "description": "Golden Signal: Traffic. Volume of demand on the system.",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 6 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(rate(http_requests_total[1m])) by (job)",
+        "legendFormat": "{{ job }}"
+      }],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "fillOpacity": 20, "lineWidth": 2 } }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Saturation — CPU & Memory",
+      "description": "Golden Signal: Saturation. How full is the service?",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sli:node_cpu_saturation * 100",
+          "legendFormat": "CPU %"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sli:node_memory_saturation * 100",
+          "legendFormat": "Memory %"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sli:node_disk_usage * 100",
+          "legendFormat": "Disk %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 80, "color": "yellow" },
+              { "value": 90, "color": "red" }
+            ]
+          },
+          "custom": { "thresholdsStyle": { "mode": "line" }, "fillOpacity": 10, "lineWidth": 2 }
         }
       }
     },
     {
+      "id": 101,
+      "title": "",
+      "type": "text",
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 2 },
+      "options": {
+        "mode": "markdown",
+        "content": "## Log & Trace Correlation\nLogs below show `error` and `warn` entries. **Trace IDs** in logs are clickable — they open directly in Tempo. This is the drill-down path: metric spike → logs → trace → root cause."
+      }
+    },
+    {
       "id": 3,
-      "title": "Logs — errors and warnings (with trace ID links to Tempo)",
+      "title": "Logs — errors and warnings (trace ID links → Tempo)",
+      "description": "Click a traceID link to open the exact trace in Tempo.",
       "type": "logs",
-      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 10 },
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
       "targets": [{
         "datasource": { "type": "loki", "uid": "loki" },
         "expr": "{level=~\"error|warn\"}",
@@ -81,51 +170,71 @@
         "wrapLogMessage": false,
         "enableLogDetails": true,
         "dedupStrategy": "none",
-        "sortOrder": "Descending"
+        "sortOrder": "Descending",
+        "prettifyLogMessage": false
       }
     },
     {
       "id": 4,
       "title": "Trace search — find the causing trace",
+      "description": "Search for error traces or paste a trace ID from the logs above.",
       "type": "traces",
-      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 10 },
       "targets": [{
         "datasource": { "type": "tempo", "uid": "tempo" },
         "queryType": "traceql",
-        "query": "{ status=error }",
+        "query": "{ status = error }",
         "legendFormat": ""
       }]
     },
     {
-      "id": 5,
-      "title": "Traffic (requests/s)",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 6 },
+      "id": 7,
+      "title": "Availability burn rate (1h)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 38, "w": 8, "h": 4 },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(rate(http_requests_total[1m])) by (job)",
-        "legendFormat": "{{ job }}"
+        "expr": "slo:availability:burn_rate1h",
+        "legendFormat": "1h burn rate"
       }],
-      "fieldConfig": { "defaults": { "unit": "reqps" } }
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 5, "color": "yellow" },
+              { "value": 14.4, "color": "red" }
+            ]
+          },
+          "links": [{
+            "title": "📊 SLO & Error Budget Dashboard",
+            "url": "/d/slo-error-budget/slo-error-budget"
+          }]
+        }
+      }
     },
     {
-      "id": 6,
-      "title": "Saturation (CPU + memory)",
-      "type": "timeseries",
-      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 6 },
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sli:node_cpu_saturation",
-          "legendFormat": "CPU saturation"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sli:node_memory_saturation",
-          "legendFormat": "Memory saturation"
+      "id": 8,
+      "title": "Active alerts",
+      "type": "alertlist",
+      "gridPos": { "x": 8, "y": 38, "w": 16, "h": 4 },
+      "options": {
+        "showOptions": "current",
+        "maxItems": 10,
+        "sortOrder": 1,
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "noData": false,
+          "normal": false
         }
-      ],
-      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 } }
+      }
     }
   ],
   "schemaVersion": 38
