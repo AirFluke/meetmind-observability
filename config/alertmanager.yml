@@ -1,0 +1,68 @@
+global:
+  resolve_timeout: 5m
+
+templates:
+  - /etc/alertmanager/slack.tmpl
+
+route:
+  receiver: slack-default
+  group_by: [alertname, severity, instance]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - match:
+        severity: critical
+      receiver: slack-critical
+      group_wait: 10s
+      repeat_interval: 4h
+    - match_re:
+        alertname: "SLO.*"
+      receiver: slack-slo
+      repeat_interval: 4h
+    - match_re:
+        alertname: "CICD.*|DORA.*"
+      receiver: slack-cicd
+      repeat_interval: 6h
+
+inhibit_rules:
+  - source_match:
+      alertname: HostDown
+    target_match_re:
+      alertname: "HighCPU.*|HighMemory.*|HighLatency.*|DiskSpace.*"
+    equal: [instance]
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: [alertname, instance]
+
+receivers:
+  - name: slack-default
+    slack_configs:
+      - api_url: "YOUR_SLACK_WEBHOOK_URL"
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.body" . }}'
+        color: '{{ template "slack.color" . }}'
+  - name: slack-critical
+    slack_configs:
+      - api_url: "YOUR_SLACK_WEBHOOK_URL"
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.body" . }}'
+        color: '{{ template "slack.color" . }}'
+  - name: slack-slo
+    slack_configs:
+      - api_url: "YOUR_SLACK_WEBHOOK_URL"
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.body" . }}'
+        color: '{{ template "slack.color" . }}'
+  - name: slack-cicd
+    slack_configs:
+      - api_url: "YOUR_SLACK_WEBHOOK_URL"
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.body" . }}'
+        color: '{{ template "slack.color" . }}'

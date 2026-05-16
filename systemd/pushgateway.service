@@ -1,0 +1,17 @@
+[Unit]
+Description=Prometheus Pushgateway — DORA Metrics Receiver
+Documentation=https://github.com/prometheus/pushgateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pushgateway
+Group=pushgateway
+ExecStart=/usr/local/bin/pushgateway \
+  --web.listen-address=0.0.0.0:9091
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

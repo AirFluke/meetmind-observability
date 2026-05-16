@@ -1,0 +1,132 @@
+{
+  "uid": "unified-observability",
+  "title": "Unified Observability — Metrics, Logs, Traces",
+  "tags": ["unified", "correlation", "traces", "logs"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "annotations": {
+    "list": [{
+      "name": "Deployments",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "expr": "changes(deployment_total[2m]) > 0",
+      "iconColor": "blue",
+      "enable": true
+    }]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Error rate — click spike to see correlated logs",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "slo:error_rate:ratio_rate5m * 100",
+        "legendFormat": "Error rate %"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 1, "color": "red" }
+            ]
+          },
+          "custom": { "thresholdsStyle": { "mode": "line" } },
+          "links": [{
+            "title": "See correlated logs in Loki",
+            "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22expr%22:%22%7Blevel%3D~%22error%7Cwarn%22%7D%22%7D%5D%7D"
+          }]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "p95 latency",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "slo:latency:p95_rate5m * 1000",
+        "legendFormat": "p95 latency (ms)"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 500, "color": "red" }
+            ]
+          },
+          "custom": { "thresholdsStyle": { "mode": "line" } }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Logs — errors and warnings (with trace ID links to Tempo)",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 10 },
+      "targets": [{
+        "datasource": { "type": "loki", "uid": "loki" },
+        "expr": "{level=~\"error|warn\"}",
+        "legendFormat": ""
+      }],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "wrapLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Trace search — find the causing trace",
+      "type": "traces",
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
+      "targets": [{
+        "datasource": { "type": "tempo", "uid": "tempo" },
+        "queryType": "traceql",
+        "query": "{ status=error }",
+        "legendFormat": ""
+      }]
+    },
+    {
+      "id": 5,
+      "title": "Traffic (requests/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 6 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(rate(http_requests_total[1m])) by (job)",
+        "legendFormat": "{{ job }}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 6,
+      "title": "Saturation (CPU + memory)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sli:node_cpu_saturation",
+          "legendFormat": "CPU saturation"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sli:node_memory_saturation",
+          "legendFormat": "Memory saturation"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 } }
+    }
+  ],
+  "schemaVersion": 38
+}

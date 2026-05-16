@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenTelemetry Collector — Traces and Logs Pipeline
+Documentation=https://opentelemetry.io/docs/collector
+After=network-online.target loki.service tempo.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=otelcol
+Group=otelcol
+ExecStart=/usr/local/bin/otelcol \
+  --config=/etc/otelcol/otel-collector.yaml
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,73 @@
+groups:
+  - name: cicd.recording_rules
+    interval: 60s
+    rules:
+      # ── Deployment Frequency (pushed from GitHub Actions via Pushgateway) ────
+      # GitHub Actions workflow pushes these metrics on each run:
+      #   deployment_total{status="success|failure", workflow, branch}
+      #   deployment_lead_time_seconds{workflow}
+      #   deployment_restore_time_seconds{incident_id}
+
+      - record: dora:deployment_frequency:rate1h
+        expr: sum(increase(deployment_total[1h])) by (workflow)
+
+      - record: dora:deployment_frequency:rate24h
+        expr: sum(increase(deployment_total[24h])) by (workflow)
+
+      # Change Failure Rate = failed deployments / total deployments
+      - record: dora:change_failure_rate:ratio7d
+        expr: |
+          sum(increase(deployment_total{status="failure"}[7d])) by (workflow)
+          /
+          sum(increase(deployment_total[7d])) by (workflow)
+
+      # Mean Time to Restore (average of restore time metric)
+      - record: dora:mttr:avg7d
+        expr: avg_over_time(deployment_restore_time_seconds[7d])
+
+  - name: cicd.alerts
+    rules:
+      # ── CFR above 15% (SLO threshold) ────────────────────────────────────────
+      - alert: CICDHighChangeFailureRate
+        expr: dora:change_failure_rate:ratio7d > 0.15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Change Failure Rate above SLO on {{ $labels.workflow }}"
+          description: >
+            CFR is {{ $value | humanizePercentage }} over 7 days (SLO threshold: 15%).
+            DORA classification: Low performer. Review recent deployments for patterns.
+          value: "{{ $value | humanizePercentage }}"
+          dashboard_url: "http://YOUR_SERVER_IP:3000/d/dora/dora-metrics"
+          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-cfr.md"
+
+      # ── MTTR exceeds 1 hour ──────────────────────────────────────────────────
+      - alert: CICDHighMTTR
+        expr: dora:mttr:avg7d > 3600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mean Time to Restore exceeds 1 hour"
+          description: >
+            MTTR is {{ $value | humanizeDuration }} (7-day average).
+            DORA classification: Low performer (Elite < 1h).
+            Review on-call process and runbook quality.
+          value: "{{ $value | humanizeDuration }}"
+          dashboard_url: "http://YOUR_SERVER_IP:3000/d/dora/dora-metrics"
+          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-mttr.md"
+
+      # ── Deployment pipeline failed ───────────────────────────────────────────
+      - alert: CICDDeploymentFailed
+        expr: increase(deployment_total{status="failure"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Deployment failure on {{ $labels.workflow }}"
+          description: >
+            A deployment on workflow '{{ $labels.workflow }}' has failed.
+            Check GitHub Actions for the failed run. CFR SLO may be impacted.
+          dashboard_url: "http://YOUR_SERVER_IP:3000/d/dora/dora-metrics"
+          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/deployment-failed.md"

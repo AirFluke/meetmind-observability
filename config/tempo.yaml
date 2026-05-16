@@ -1,0 +1,44 @@
+server:
+  http_listen_port: 3200
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m
+  trace_idle_period: 10s
+
+compactor:
+  compaction:
+    block_retention: 720h
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/lib/tempo/traces
+    wal:
+      path: /var/lib/tempo/wal
+
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: meetmind-prod
+  storage:
+    path: /var/lib/tempo/generator/wal
+    remote_write:
+      - url: http://localhost:9090/api/v1/write
+        send_exemplars: true
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics]

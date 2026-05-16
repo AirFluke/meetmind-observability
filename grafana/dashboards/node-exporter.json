@@ -1,0 +1,131 @@
+{
+  "uid": "node-exporter",
+  "title": "Node Exporter — System Metrics",
+  "tags": ["infrastructure", "node"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "CPU utilisation (total)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 6 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sli:node_cpu_saturation * 100",
+        "legendFormat": "{{ instance }}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+    },
+    {
+      "id": 2,
+      "title": "Memory (used/cached/available)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / 1024/1024/1024",
+          "legendFormat": "Used (GiB)"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_memory_Cached_bytes / 1024/1024/1024",
+          "legendFormat": "Cached (GiB)"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_memory_MemAvailable_bytes / 1024/1024/1024",
+          "legendFormat": "Available (GiB)"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "GiB" } }
+    },
+    {
+      "id": 3,
+      "title": "Disk I/O",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(node_disk_read_bytes_total[5m])",
+          "legendFormat": "Read {{ device }}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(node_disk_written_bytes_total[5m])",
+          "legendFormat": "Write {{ device }}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } }
+    },
+    {
+      "id": 4,
+      "title": "Network I/O",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(node_network_receive_bytes_total{device!~\"lo\"}[5m])",
+          "legendFormat": "Receive {{ device }}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(node_network_transmit_bytes_total{device!~\"lo\"}[5m])",
+          "legendFormat": "Transmit {{ device }}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } }
+    },
+    {
+      "id": 5,
+      "title": "System load averages",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_load1",
+          "legendFormat": "1m"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_load5",
+          "legendFormat": "5m"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_load15",
+          "legendFormat": "15m"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Disk usage %",
+      "type": "gauge",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 6 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sli:node_disk_usage * 100",
+        "legendFormat": "{{ mountpoint }}"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 75, "color": "yellow" },
+              { "value": 90, "color": "red" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "schemaVersion": 38
+}

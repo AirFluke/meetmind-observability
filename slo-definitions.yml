@@ -1,0 +1,89 @@
+# SLO Definitions — MeetMind Platform
+# This file is the authoritative source for all SLI/SLO targets.
+# Changes require a reliability review and update of error-budget-policy.md.
+
+service: meetmind
+last_reviewed: "2025-05-18"
+review_cadence: monthly
+
+slos:
+  availability:
+    description: "Percentage of HTTP probes returning 2xx over a rolling 30-day window"
+    sli:
+      metric: probe_success
+      promql: avg_over_time(probe_success[30d])
+    target: 0.995          # 99.5%
+    window: 30d
+    error_budget_minutes: 216  # (1 - 0.995) * 30d * 24h * 60m = 216 minutes
+    rationale: >
+      99.5% is appropriate for a development/staging service. For production with
+      paying users, raise to 99.9%. 99.5% gives us 216 minutes/month of budget —
+      enough for planned maintenance windows without burning the budget.
+
+  latency:
+    description: "95th percentile of request duration under 500ms"
+    sli:
+      metric: http_request_duration_seconds
+      promql: |
+        histogram_quantile(0.95,
+          sum(rate(http_request_duration_seconds_bucket{status!~"5.."}[5m])) by (le, job)
+        )
+    target: 0.500          # 500ms
+    window: 5m
+    rationale: >
+      500ms p95 matches industry standard for interactive APIs. Slow requests
+      degrade user experience measurably beyond this threshold. The 5m window
+      catches regressions quickly without false positives from transient spikes.
+
+  error_rate:
+    description: "Less than 1% of requests return 5xx status"
+    sli:
+      metric: http_requests_total
+      promql: |
+        1 - (
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (job)
+          / sum(rate(http_requests_total[5m])) by (job)
+        )
+    target: 0.99           # 99% success = <1% error rate
+    window: 30d
+    error_budget_minutes: 432
+    rationale: >
+      1% error rate allows for transient failures during deployments. A stricter
+      0.1% target would require automated canary releases before raising.
+
+  saturation:
+    description: "CPU utilisation below 85% and memory below 85%"
+    sli:
+      metric: node_cpu_seconds_total / node_memory_MemAvailable_bytes
+      promql_cpu: 1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))
+      promql_memory: 1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+    target: 0.85
+    rationale: >
+      85% headroom leaves capacity for traffic bursts. Above 90% sustained,
+      latency degrades non-linearly. This SLI triggers capacity planning reviews.
+
+four_golden_signals:
+  latency:
+    promql: |
+      histogram_quantile(0.95,
+        sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job)
+      )
+    distinguish_errors: true
+    error_promql: |
+      histogram_quantile(0.95,
+        sum(rate(http_request_duration_seconds_bucket{status=~"5.."}[5m])) by (le, job)
+      )
+
+  traffic:
+    promql: sum(rate(http_requests_total[1m])) by (job)
+
+  errors:
+    promql: |
+      sum(rate(http_requests_total{status=~"5.."}[5m])) by (job)
+      / sum(rate(http_requests_total[5m])) by (job)
+
+  saturation:
+    cpu:  1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+    memory: 1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+    disk: 1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})
+    connections: node_sockstat_TCP_alloc / node_sockstat_TCP_max

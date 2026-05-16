@@ -1,0 +1,29 @@
+{{ define "slack.title" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}
+{{- end }}
+
+{{ define "slack.color" -}}
+{{- if eq .Status "resolved" }}good
+{{- else if eq .GroupLabels.severity "critical" }}danger
+{{- else }}warning
+{{- end }}
+{{- end }}
+
+{{ define "slack.body" -}}
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Severity:* {{ .Labels.severity | toUpper }}
+*Status:* {{ if eq $.Status "resolved" }}✅ RESOLVED{{ else }}🔥 FIRING{{ end }}
+*Host:* {{ .Labels.instance }}
+*Summary:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+
+*Links:*
+- <{{ .Annotations.dashboard_url }}|📊 Grafana Dashboard>
+- <{{ .Annotations.runbook_url }}|📖 Runbook>
+
+*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+{{ if eq $.Status "resolved" }}*Resolved:* {{ .EndsAt.Format "2006-01-02 15:04:05 UTC" }}{{ end }}
+---
+{{ end }}
+{{- end }}

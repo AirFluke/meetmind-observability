@@ -1,0 +1,99 @@
+groups:
+  - name: slo.recording_rules
+    interval: 30s
+    rules:
+      # ── Availability SLI: 99.5% of probes return 2xx over 30 days ───────────
+      - record: slo:availability:ratio_rate5m
+        expr: avg_over_time(probe_success[5m])
+
+      - record: slo:availability:ratio_rate1h
+        expr: avg_over_time(probe_success[1h])
+
+      - record: slo:availability:ratio_rate6h
+        expr: avg_over_time(probe_success[6h])
+
+      - record: slo:availability:ratio_rate30d
+        expr: avg_over_time(probe_success[30d])
+
+      # ── Error rate SLI (requires app metrics via OTel / Pushgateway) ─────────
+      - record: slo:error_rate:ratio_rate5m
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (job)
+          /
+          sum(rate(http_requests_total[5m])) by (job)
+
+      - record: slo:error_rate:ratio_rate1h
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[1h])) by (job)
+          /
+          sum(rate(http_requests_total[1h])) by (job)
+
+      - record: slo:error_rate:ratio_rate6h
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[6h])) by (job)
+          /
+          sum(rate(http_requests_total[6h])) by (job)
+
+      # ── Latency SLI: 95% of requests complete under 500ms ───────────────────
+      - record: slo:latency:p95_rate5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job)
+          )
+
+      # ── Burn rate denominators (SLO target = 0.995 → error budget = 0.005) ──
+      # Burn rate = (1h error rate) / (1 - SLO)
+      - record: slo:availability:burn_rate1h
+        expr: (1 - slo:availability:ratio_rate1h) / 0.005
+
+      - record: slo:availability:burn_rate6h
+        expr: (1 - slo:availability:ratio_rate6h) / 0.005
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  - name: slo.alerts
+    rules:
+
+      # ── Fast burn (critical): 2% budget consumed in 1h → 14.4x burn rate ────
+      - alert: SLOAvailabilityFastBurn
+        expr: slo:availability:burn_rate1h > 14.4
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fast error budget burn on {{ $labels.instance }}"
+          description: >
+            Availability SLO burn rate is {{ $value | humanize }}x (threshold: 14.4x).
+            At this rate 2% of the 30-day error budget will be consumed within 1 hour.
+            Immediate action required.
+          value: "{{ $value | humanize }}x burn rate"
+          dashboard_url: "http://YOUR_SERVER_IP:3000/d/slo/slo-error-budget"
+          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/slo-fast-burn.md"
+
+      # ── Slow burn (warning): 5% budget in 6h → 5x burn rate ────────────────
+      - alert: SLOAvailabilitySlowBurn
+        expr: slo:availability:burn_rate6h > 5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow error budget burn on {{ $labels.instance }}"
+          description: >
+            Availability SLO burn rate is {{ $value | humanize }}x over 6h (threshold: 5x).
+            5% of the 30-day error budget will be consumed in 6 hours if this continues.
+            Investigate before it escalates.
+          value: "{{ $value | humanize }}x burn rate"
+          dashboard_url: "http://YOUR_SERVER_IP:3000/d/slo/slo-error-budget"
+          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/slo-slow-burn.md"
+
+      # ── High p95 latency ─────────────────────────────────────────────────────
+      - alert: HighLatencyWarning
+        expr: slo:latency:p95_rate5m > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency above SLO on {{ $labels.job }}"
+          description: "p95 request latency is {{ $value | humanizeDuration }} (SLO: 500ms)"
+          value: "{{ $value | humanizeDuration }}"
+          dashboard_url: "http://YOUR_SERVER_IP:3000/d/slo/slo-error-budget"
+          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-latency.md"

@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: meetmind-dashboards
+    orgId: 1
+    folder: "MeetMind Observability"
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

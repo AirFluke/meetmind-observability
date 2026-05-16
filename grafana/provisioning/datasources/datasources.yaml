@@ -1,0 +1,61 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: POST
+    version: 1
+    editable: false
+
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000
+      # ── Derived fields: make trace IDs in logs clickable → Tempo ───────────
+      derivedFields:
+        - name: TraceID
+          matcherRegex: "traceID=(\\w+)"
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          urlDisplayLabel: "Open in Tempo"
+        - name: TraceID_json
+          matcherRegex: '"traceId":"(\\w+)"'
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          urlDisplayLabel: "Open trace in Tempo"
+    version: 1
+    editable: false
+
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      nodeGraph:
+        enabled: true
+      serviceMap:
+        datasourceUid: prometheus
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: loki
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-5m"
+        spanEndTimeShift: "5m"
+        filterByTraceID: true
+        filterBySpanID: false
+        customQuery: true
+        query: '{service_name="$${__span.tags.service.name}"} |= "$${__trace.traceId}"'
+    version: 1
+    editable: false

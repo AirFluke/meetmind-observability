@@ -1,0 +1,24 @@
+[Unit]
+Description=Prometheus Metrics Server
+Documentation=https://prometheus.io/docs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/var/lib/prometheus \
+  --storage.tsdb.retention.time=30d \
+  --web.enable-lifecycle \
+  --web.enable-remote-write-receiver \
+  --web.listen-address=0.0.0.0:9090
+
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

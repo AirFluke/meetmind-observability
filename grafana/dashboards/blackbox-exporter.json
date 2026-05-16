@@ -1,0 +1,103 @@
+{
+  "uid": "blackbox-exporter",
+  "title": "Blackbox Exporter — Uptime & Probing",
+  "tags": ["blackbox", "uptime", "ssl"],
+  "timezone": "browser",
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Probe success rate",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "avg(probe_success) * 100",
+        "legendFormat": "Uptime %"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 99, "color": "yellow" },
+              { "value": 99.5, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "SSL certificate expiry",
+      "type": "bargauge",
+      "gridPos": { "x": 6, "y": 0, "w": 12, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "(probe_ssl_earliest_cert_expiry - time()) / 86400",
+        "legendFormat": "{{ instance }}"
+      }],
+      "options": { "orientation": "horizontal" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 14, "color": "yellow" },
+              { "value": 30, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Uptime / downtime timeline",
+      "type": "status-history",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 6 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "probe_success",
+        "legendFormat": "{{ instance }}"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 70 },
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 1, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "HTTP response time (p50 / p90 / p99)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "probe_http_duration_seconds{phase=\"connect\"} * 1000",
+          "legendFormat": "Connect {{ instance }}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "probe_duration_seconds * 1000",
+          "legendFormat": "Total {{ instance }}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    }
+  ],
+  "schemaVersion": 38
+}

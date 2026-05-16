@@ -1,0 +1,85 @@
+name: Deploy MeetMind
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PUSHGATEWAY_URL: http://13.222.1.133:9091
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record deploy start time
+        id: timing
+        run: echo "start_ts=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - name: Build & test
+        id: build
+        run: |
+          echo "Running build and tests..."
+          # Add your actual build/test steps here
+
+      - name: Deploy to production
+        id: deploy
+        run: |
+          echo "Deploying to 13.222.1.133..."
+          # Add your actual deploy steps here
+
+      - name: Push DORA metrics to Pushgateway (success)
+        if: success()
+        run: |
+          LEAD_TIME=$(( $(date +%s) - ${{ steps.timing.outputs.start_ts }} ))
+          WORKFLOW="${{ github.workflow }}"
+          BRANCH="${{ github.ref_name }}"
+          COMMIT="${{ github.sha }}"
+
+          # Deployment total counter
+          cat <<EOF | curl --data-binary @- "${PUSHGATEWAY_URL}/metrics/job/github_actions/instance/meetmind"
+          # HELP deployment_total Total deployments by status
+          # TYPE deployment_total counter
+          deployment_total{status="success",workflow="${WORKFLOW}",branch="${BRANCH}"} 1
+          EOF
+
+          # Lead time histogram
+          cat <<EOF | curl --data-binary @- "${PUSHGATEWAY_URL}/metrics/job/github_actions/instance/meetmind"
+          # HELP deployment_lead_time_seconds Lead time from commit to production
+          # TYPE deployment_lead_time_seconds gauge
+          deployment_lead_time_seconds{workflow="${WORKFLOW}",commit="${COMMIT}"} ${LEAD_TIME}
+          EOF
+
+          echo "Metrics pushed: deployment=success, lead_time=${LEAD_TIME}s"
+
+      - name: Push DORA metrics to Pushgateway (failure)
+        if: failure()
+        run: |
+          WORKFLOW="${{ github.workflow }}"
+          BRANCH="${{ github.ref_name }}"
+
+          cat <<EOF | curl --data-binary @- "${PUSHGATEWAY_URL}/metrics/job/github_actions/instance/meetmind"
+          # HELP deployment_total Total deployments by status
+          # TYPE deployment_total counter
+          deployment_total{status="failure",workflow="${WORKFLOW}",branch="${BRANCH}"} 1
+          EOF
+
+          echo "Metrics pushed: deployment=failure"
+
+  # ── Separate job: simulate incident for MTTR tracking ─────────────────────
+  record-restore:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Record incident resolution
+        env:
+          INCIDENT_ID: ${{ github.run_id }}
+          RESTORE_TIME_SECONDS: ${{ inputs.restore_time_seconds || '1800' }}
+        run: |
+          cat <<EOF | curl --data-binary @- "${PUSHGATEWAY_URL}/metrics/job/incident_restore/instance/meetmind"
+          # HELP deployment_restore_time_seconds Time to restore after incident
+          # TYPE deployment_restore_time_seconds gauge
+          deployment_restore_time_seconds{incident_id="${INCIDENT_ID}"} ${RESTORE_TIME_SECONDS}
+          EOF

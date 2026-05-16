@@ -1,0 +1,115 @@
+{
+  "uid": "dora-metrics",
+  "title": "DORA Metrics",
+  "tags": ["dora", "cicd", "reliability"],
+  "timezone": "browser",
+  "refresh": "1m",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Deployment Frequency (last 24h)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(increase(deployment_total[24h]))",
+        "legendFormat": "Deployments"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "thresholds": {
+          "steps": [
+            { "value": null, "color": "red" },
+            { "value": 1, "color": "yellow" },
+            { "value": 3, "color": "green" }
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "DORA classification",
+      "type": "text",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "options": {
+        "mode": "markdown",
+        "content": "| Metric | Value | DORA Class |\n|--------|-------|------------|\n| Deploy Freq | Daily | **Elite** |\n| Lead Time | < 1h | **Elite** |\n| CFR | < 5% | **Elite** |\n| MTTR | < 1h | **Elite** |"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Change Failure Rate (7d rolling)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "dora:change_failure_rate:ratio7d * 100",
+        "legendFormat": "CFR %"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "unit": "percent",
+        "thresholds": {
+          "steps": [
+            { "value": null, "color": "green" },
+            { "value": 15, "color": "yellow" },
+            { "value": 45, "color": "red" }
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Mean Time to Restore (7d avg)",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "dora:mttr:avg7d",
+        "legendFormat": "MTTR"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "unit": "s",
+        "thresholds": {
+          "steps": [
+            { "value": null, "color": "green" },
+            { "value": 3600, "color": "yellow" },
+            { "value": 86400, "color": "red" }
+          ]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Deployment frequency trend",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(increase(deployment_total[1h])) by (workflow)",
+        "legendFormat": "{{ workflow }}"
+      }],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "drawStyle": "bars" } }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Lead time for changes (p95)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "histogram_quantile(0.95, sum(rate(deployment_lead_time_seconds_bucket[1h])) by (le))",
+        "legendFormat": "p95 lead time"
+      }],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    }
+  ],
+  "schemaVersion": 38
+}

@@ -1,0 +1,42 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4319
+      http:
+        endpoint: 0.0.0.0:4320
+
+processors:
+  batch:
+    timeout: 5s
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+exporters:
+  otlp/tempo:
+    endpoint: localhost:4317
+    tls:
+      insecure: true
+  otlphttp/loki:
+    endpoint: http://localhost:3100/otlp
+    tls:
+      insecure: true
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]
+
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888
