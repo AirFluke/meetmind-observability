@@ -48,7 +48,7 @@ If disk is > 95% and cannot be freed: escalate immediately — filesystem full =
 **Alert:** `HighLatencyWarning` — p95 > 500ms
 
 ## First 3 investigation steps
-1. Open [Unified Observability](http://YOUR_SERVER_IP:3000/d/unified-observability) — latency panel
+1. Open [Unified Observability](http://13.63.206.183:3000/d/unified-observability) — latency panel
 2. Find a slow trace in Tempo: query `{ duration > 500ms }`
 3. Check CPU and memory saturation — resource exhaustion causes latency
 
@@ -65,7 +65,7 @@ If disk is > 95% and cannot be freed: escalate immediately — filesystem full =
 **Alert:** `CICDHighChangeFailureRate` — CFR > 15% over 7 days
 
 ## First 3 investigation steps
-1. Open [DORA Metrics](http://YOUR_SERVER_IP:3000/d/dora-metrics) — identify which workflows are failing
+1. Open [DORA Metrics](http://13.63.206.183:3000/d/dora-metrics) — identify which workflows are failing
 2. Check GitHub Actions for failed workflow runs in the last 7 days
 3. Check if failures cluster around specific times, branches, or team members
 
@@ -123,7 +123,7 @@ If auto-renewal fails: escalate to senior engineer — expired SSL = service una
 ## First 3 investigation steps
 1. Open GitHub Actions — find the failed run and read the error logs
 2. Check if the failure is in build, test, or deploy step
-3. Check if the server is reachable: `curl http://YOUR_SERVER_IP:3000/api/health`
+3. Check if the server is reachable: `curl http://13.63.206.183:3000/api/health`
 
 ## Resolution
 - Fix the code issue and push a new commit

@@ -15,13 +15,13 @@ Blackbox Exporter HTTP probe has failed for 2+ consecutive minutes. The service 
 
 1. **Check if the server is reachable at all:**
    ```bash
-   ping -c 3 YOUR_SERVER_IP
-   curl -v http://YOUR_SERVER_IP:3000/api/health
+   ping -c 3 13.63.206.183
+   curl -v http://13.63.206.183:3000/api/health
    ```
 
 2. **Check Docker Compose services:**
    ```bash
-   ssh ubuntu@YOUR_SERVER_IP
+   ssh ubuntu@13.63.206.183
    cd /opt/meetmind-observability
    docker compose ps
    docker compose logs --tail=50 grafana prometheus

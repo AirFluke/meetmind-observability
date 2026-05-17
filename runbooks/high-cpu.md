@@ -15,13 +15,13 @@ CPU utilisation has exceeded 80% (warning) or 90% (critical) on an instance.
 
 1. **Check running processes:**
    ```bash
-   ssh ubuntu@YOUR_SERVER_IP
+   ssh ubuntu@13.63.206.183
    top -bn1 | head -20
    # Or: ps aux --sort=-%cpu | head -10
    ```
 
 2. **Correlate with traffic:**
-   Open the [Unified Observability dashboard](http://YOUR_SERVER_IP:3000/d/unified-observability)
+   Open the [Unified Observability dashboard](http://13.63.206.183:3000/d/unified-observability)
    and check if the traffic panel shows a spike matching the CPU spike window.
 
 3. **Check for runaway containers:**

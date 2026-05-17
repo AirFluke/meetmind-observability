@@ -39,7 +39,7 @@ groups:
             CFR is {{ $value | humanizePercentage }} over 7 days (SLO threshold: 15%).
             DORA classification: Low performer. Review recent deployments for patterns.
           value: "{{ $value | humanizePercentage }}"
-          dashboard_url: "http://YOUR_SERVER_IP:3000/d/dora/dora-metrics"
+          dashboard_url: "http://13.63.206.183:3000/d/dora/dora-metrics"
           runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-cfr.md"
 
       # ── MTTR exceeds 1 hour ──────────────────────────────────────────────────
@@ -55,7 +55,7 @@ groups:
             DORA classification: Low performer (Elite < 1h).
             Review on-call process and runbook quality.
           value: "{{ $value | humanizeDuration }}"
-          dashboard_url: "http://YOUR_SERVER_IP:3000/d/dora/dora-metrics"
+          dashboard_url: "http://13.63.206.183:3000/d/dora/dora-metrics"
           runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-mttr.md"
 
       # ── Deployment pipeline failed ───────────────────────────────────────────
@@ -69,5 +69,5 @@ groups:
           description: >
             A deployment on workflow '{{ $labels.workflow }}' has failed.
             Check GitHub Actions for the failed run. CFR SLO may be impacted.
-          dashboard_url: "http://YOUR_SERVER_IP:3000/d/dora/dora-metrics"
+          dashboard_url: "http://13.63.206.183:3000/d/dora/dora-metrics"
           runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/deployment-failed.md"

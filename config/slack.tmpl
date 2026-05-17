@@ -1,12 +1,12 @@
 {{ define "slack.title" -}}
-[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }} — {{ .GroupLabels.severity | toUpper }}
 {{- end }}
 
 {{ define "slack.color" -}}
-{{- if eq .Status "resolved" }}good
-{{- else if eq .GroupLabels.severity "critical" }}danger
-{{- else }}warning
-{{- end }}
+  {{- if eq .Status "resolved" }}good
+  {{- else if eq .GroupLabels.severity "critical" }}danger
+  {{- else }}warning
+  {{- end }}
 {{- end }}
 
 {{ define "slack.body" -}}
@@ -14,13 +14,14 @@
 *Alert:* {{ .Labels.alertname }}
 *Severity:* {{ .Labels.severity | toUpper }}
 *Status:* {{ if eq $.Status "resolved" }}✅ RESOLVED{{ else }}🔥 FIRING{{ end }}
-*Host:* {{ .Labels.instance }}
+*Host:* {{ .Labels.instance | default "N/A" }}
+*Value:* {{ .Annotations.value | default "see dashboard" }}
 *Summary:* {{ .Annotations.summary }}
 *Description:* {{ .Annotations.description }}
 
 *Links:*
-- <{{ .Annotations.dashboard_url }}|📊 Grafana Dashboard>
-- <{{ .Annotations.runbook_url }}|📖 Runbook>
+• <{{ .Annotations.dashboard_url | default "http://13.63.206.183:3000" }}|📊 Grafana Dashboard>
+• <{{ .Annotations.runbook_url | default "https://github.com/your-org/meetmind-observability/tree/main/runbooks" }}|📖 Runbook>
 
 *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
 {{ if eq $.Status "resolved" }}*Resolved:* {{ .EndsAt.Format "2006-01-02 15:04:05 UTC" }}{{ end }}

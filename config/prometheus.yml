@@ -16,45 +16,14 @@ rule_files:
   - /etc/prometheus/alerts/cicd.yml
 
 scrape_configs:
+  # ── Monitoring server self-monitoring ────────────────────────────────────────
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]
 
-  - job_name: node-exporter
-    scrape_interval: 15s
+  - job_name: alertmanager
     static_configs:
-      - targets: ["localhost:9100"]
-
-  - job_name: blackbox-http
-    metrics_path: /probe
-    params:
-      module: [http_2xx]
-    static_configs:
-      - targets:
-          - http://localhost:3000
-          - http://localhost:9090/-/healthy
-          - http://localhost:3100/ready
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: localhost:9115
-
-  - job_name: blackbox-ssl
-    metrics_path: /probe
-    params:
-      module: [tls_connect]
-    static_configs:
-      - targets: []
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: localhost:9115
+      - targets: ["localhost:9093"]
 
   - job_name: pushgateway
     honor_labels: true
@@ -65,14 +34,46 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:8888"]
 
-  - job_name: alertmanager
+  # ── App server — Node Exporter (scraped remotely) ────────────────────────────
+  - job_name: node-exporter
+    scrape_interval: 15s
     static_configs:
-      - targets: ["localhost:9093"]
+      - targets: ["APP_SERVER_IP:9100"]
+        labels:
+          instance: "meetmind-app"
+          server: "APP_SERVER_IP"
 
-  - job_name: loki
+  # ── Blackbox probing of app server endpoints ─────────────────────────────────
+  - job_name: blackbox-http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
     static_configs:
-      - targets: ["localhost:3100"]
+      - targets:
+          - http://APP_SERVER_IP
+          - http://APP_SERVER_IP:3000
+          - http://APP_SERVER_IP:3001
+          - https://APP_SERVER_IP
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
 
-  - job_name: tempo
+  # ── SSL expiry probing ────────────────────────────────────────────────────────
+  - job_name: blackbox-ssl
+    metrics_path: /probe
+    params:
+      module: [tls_connect]
     static_configs:
-      - targets: ["localhost:3200"]
+      - targets:
+          - APP_SERVER_IP:443
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115

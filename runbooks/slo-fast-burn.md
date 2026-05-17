@@ -16,11 +16,11 @@ At 14.4× burn rate you have approximately **1 hour** to act before significant 
 ## First 3 investigation steps
 
 1. **Open the SLO dashboard immediately:**
-   [SLO & Error Budget](http://YOUR_SERVER_IP:3000/d/slo-error-budget)
+   [SLO & Error Budget](http://13.63.206.183:3000/d/slo-error-budget)
    Note the burn rate trend — is it accelerating or stabilising?
 
 2. **Open the Unified Observability dashboard:**
-   [Unified Observability](http://YOUR_SERVER_IP:3000/d/unified-observability)
+   [Unified Observability](http://13.63.206.183:3000/d/unified-observability)
    Check the error rate panel for the time the burn started.
    Click "See correlated logs in Loki" to find error messages from that window.
    Follow the trace ID link to Tempo to find the causing trace.
@@ -58,10 +58,10 @@ in 6 hours. You have time to investigate but must act before it escalates.
 
 ## First 3 investigation steps
 
-1. Open [SLO & Error Budget](http://YOUR_SERVER_IP:3000/d/slo-error-budget) and
+1. Open [SLO & Error Budget](http://13.63.206.183:3000/d/slo-error-budget) and
    check how long the slow burn has been active.
 
-2. Check error rate trend on the [Unified Observability](http://YOUR_SERVER_IP:3000/d/unified-observability)
+2. Check error rate trend on the [Unified Observability](http://13.63.206.183:3000/d/unified-observability)
    dashboard — is it steady or increasing?
 
 3. Review last 6 hours of logs in Loki:

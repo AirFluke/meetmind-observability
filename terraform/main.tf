@@ -11,89 +11,163 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Deploy the stack onto the server via SSH
-resource "null_resource" "lgtm_deploy" {
-  triggers = {
-    install_hash = filemd5("${path.module}/../install.sh")
+# ── Data: get latest Ubuntu 24.04 AMI automatically ──────────────────────────
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
   }
 
-  connection {
-    type        = "ssh"
-    host        = var.server_ip
-    user        = var.ssh_user
-    private_key = file(var.ssh_key_path)
-  }
-
-  provisioner "file" {
-    source      = "${path.module}/../"
-    destination = "/opt/meetmind-observability"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "cd /opt/meetmind-observability",
-      "sudo SLACK_WEBHOOK=${var.slack_webhook} bash install.sh"
-    ]
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
 }
 
-# Open required ports on AWS security group
-resource "aws_security_group_rule" "grafana" {
-  type              = "ingress"
-  from_port         = 3000
-  to_port           = 3000
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = var.security_group_id
-  description       = "Grafana UI"
+# ── Security group for monitoring server ─────────────────────────────────────
+resource "aws_security_group" "monitoring" {
+  name        = "meetmind-monitoring-sg"
+  description = "Security group for MeetMind monitoring server"
+  vpc_id      = var.vpc_id
+
+  # SSH access
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_ssh_cidr
+    description = "SSH"
+  }
+
+  # Grafana UI
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Grafana"
+  }
+
+  # Prometheus UI
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_ssh_cidr
+    description = "Prometheus"
+  }
+
+  # Alertmanager
+  ingress {
+    from_port   = 9093
+    to_port     = 9093
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_ssh_cidr
+    description = "Alertmanager"
+  }
+
+  # Pushgateway
+  ingress {
+    from_port   = 9091
+    to_port     = 9091
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Pushgateway — GitHub Actions needs this"
+  }
+
+  # OTel collector — receives traces from app server
+  ingress {
+    from_port   = 4319
+    to_port     = 4320
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "OTel collector OTLP gRPC and HTTP"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "All outbound"
+  }
+
+  tags = {
+    Name    = "meetmind-monitoring-sg"
+    Project = "meetmind-observability"
+  }
 }
 
-resource "aws_security_group_rule" "prometheus" {
-  type              = "ingress"
-  from_port         = 9090
-  to_port           = 9090
-  protocol          = "tcp"
-  cidr_blocks       = var.allowed_cidr_blocks
-  security_group_id = var.security_group_id
-  description       = "Prometheus"
+# ── Security group rule on APP server — allow monitoring to scrape Node Exporter
+# NOTE: You need to add var.app_server_security_group_id to your tfvars
+# This opens port 9100 on the app server only to the monitoring server
+resource "aws_security_group_rule" "allow_node_exporter_scrape" {
+  type                     = "ingress"
+  from_port                = 9100
+  to_port                  = 9100
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.monitoring.id
+  security_group_id        = var.app_server_security_group_id
+  description              = "Allow monitoring server to scrape Node Exporter"
 }
 
-resource "aws_security_group_rule" "alertmanager" {
-  type              = "ingress"
-  from_port         = 9093
-  to_port           = 9093
-  protocol          = "tcp"
-  cidr_blocks       = var.allowed_cidr_blocks
-  security_group_id = var.security_group_id
-  description       = "Alertmanager"
+# ── EC2 monitoring server ─────────────────────────────────────────────────────
+resource "aws_instance" "monitoring" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  vpc_security_group_ids = [aws_security_group.monitoring.id]
+  subnet_id              = var.subnet_id
+
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3"
+  }
+
+  # Cloud-init: install git, clone repo, run install.sh
+  user_data = templatefile("${path.module}/user_data.sh.tpl", {
+    app_server_ip  = var.app_server_ip
+    slack_webhook  = var.slack_webhook
+    repo_url       = var.repo_url
+    grafana_password = var.grafana_password
+  })
+
+  tags = {
+    Name    = "meetmind-monitoring"
+    Project = "meetmind-observability"
+  }
 }
 
-resource "aws_security_group_rule" "pushgateway" {
-  type              = "ingress"
-  from_port         = 9091
-  to_port           = 9091
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = var.security_group_id
-  description       = "Pushgateway"
+# ── Elastic IP so monitoring server IP stays stable across stop/start ─────────
+resource "aws_eip" "monitoring" {
+  instance = aws_instance.monitoring.id
+  domain   = "vpc"
+
+  tags = {
+    Name = "meetmind-monitoring-eip"
+  }
 }
 
-resource "aws_security_group_rule" "loki" {
-  type              = "ingress"
-  from_port         = 3100
-  to_port           = 3100
-  protocol          = "tcp"
-  cidr_blocks       = var.allowed_cidr_blocks
-  security_group_id = var.security_group_id
-  description       = "Loki"
+# ── Outputs ───────────────────────────────────────────────────────────────────
+output "monitoring_server_ip" {
+  value       = aws_eip.monitoring.public_ip
+  description = "Public IP of the monitoring server"
 }
 
-resource "aws_security_group_rule" "tempo" {
-  type              = "ingress"
-  from_port         = 3200
-  to_port           = 3200
-  protocol          = "tcp"
-  cidr_blocks       = var.allowed_cidr_blocks
-  security_group_id = var.security_group_id
-  description       = "Tempo"
+output "grafana_url" {
+  value       = "http://${aws_eip.monitoring.public_ip}:3000"
+  description = "Grafana dashboard URL"
+}
+
+output "prometheus_url" {
+  value       = "http://${aws_eip.monitoring.public_ip}:9090"
+  description = "Prometheus URL"
+}
+
+output "ssh_command" {
+  value       = "ssh -i ${var.key_name}.pem ubuntu@${aws_eip.monitoring.public_ip}"
+  description = "SSH command to connect to monitoring server"
 }

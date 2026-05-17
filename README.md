@@ -1,168 +1,120 @@
-# MeetMind Observability Platform — Systemd Edition
+# MeetMind Observability Platform — Remote Monitoring
 
-Production-grade LGTM observability stack running as native systemd services.
-No Docker required. Works on any Ubuntu 24.04 server.
+The monitoring stack runs on a **separate server** from the application.
+Prometheus scrapes metrics from the app server remotely.
+Alertmanager, Grafana, Loki, and Tempo all live on the monitoring server only.
 
-## One-command deployment
+```
+Application Server (13.63.206.183)    Monitoring Server (spun up by Terraform)
+─────────────────────────────────     ────────────────────────────────────────
+Node Exporter     :9100         ←──── Prometheus scrapes every 15s
+Nginx/App         :80/:443      ←──── Blackbox probes HTTP + SSL
+App (OTel SDK)    ──────────────────→ OTel Collector :4319 (receives traces/logs)
+                                      ↓
+                                   Loki (logs)
+                                   Tempo (traces)
+                                   Grafana (dashboards)
+                                   Alertmanager → Slack #all-hng-alerts
+```
+
+## Spin up monitoring server
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+
+terraform init
+terraform apply
+```
+
+Terraform will:
+1. Create an EC2 instance (t3.medium, Ubuntu 24.04)
+2. Assign an Elastic IP so the IP stays stable
+3. Open required ports in a new security group
+4. Open port 9100 on your app server's security group
+5. Run install.sh automatically via cloud-init
+6. Output the Grafana URL when done
+
+## Spin down monitoring server
+
+```bash
+terraform destroy
+```
+
+App server is completely unaffected. Node Exporter stays installed and running — it just won't be scraped until the monitoring server comes back.
+
+## One-time setup on app server
+
+Run this ONCE on your application server (13.63.206.183):
+
+```bash
+# SSH into your app server
+ssh ubuntu@13.63.206.183
+
+# Install Node Exporter
+curl -O https://raw.githubusercontent.com/AirFluke/meetmind-observability/main/scripts/install-node-exporter-on-app-server.sh
+sudo bash install-node-exporter-on-app-server.sh
+```
+
+This installs Node Exporter as a systemd service on port 9100.
+The Terraform security group rule opens that port only to the monitoring server.
+
+## Manual deploy (no Terraform)
 
 ```bash
 git clone https://github.com/AirFluke/meetmind-observability.git
 cd meetmind-observability
-sudo SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK bash install.sh
+
+sudo APP_SERVER_IP=13.63.206.183 \
+     SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK \
+     bash install.sh
 ```
 
-Without Slack webhook (configure later):
-```bash
-sudo bash install.sh
-```
-
-## What gets installed
-
-| Service | Binary location | Config | Data | Port |
-|---------|----------------|--------|------|------|
-| Prometheus | /usr/local/bin/prometheus | /etc/prometheus/ | /var/lib/prometheus | 9090 |
-| Loki | /usr/local/bin/loki | /etc/loki/ | /var/lib/loki | 3100 |
-| Tempo | /usr/local/bin/tempo | /etc/tempo/ | /var/lib/tempo | 3200 |
-| Grafana | apt package | /etc/grafana/ | /var/lib/grafana | 3000 |
-| Alertmanager | /usr/local/bin/alertmanager | /etc/alertmanager/ | /var/lib/alertmanager | 9093 |
-| Node Exporter | /usr/local/bin/node_exporter | — | — | 9100 |
-| Blackbox Exporter | /usr/local/bin/blackbox_exporter | /etc/blackbox_exporter/ | — | 9115 |
-| Pushgateway | /usr/local/bin/pushgateway | — | — | 9091 |
-| OTel Collector | /usr/local/bin/otelcol | /etc/otelcol/ | — | 4317/4318 |
-
-## Check status of all services
+## Check status
 
 ```bash
 sudo bash scripts/status.sh
 ```
 
-Or individually:
-```bash
-sudo systemctl status prometheus
-sudo systemctl status grafana-server
-sudo systemctl status loki
-# etc.
-```
+## What gets monitored
 
-## View logs
-
-```bash
-# Follow logs for any service
-journalctl -u prometheus -f
-journalctl -u grafana-server -f
-journalctl -u loki -f
-journalctl -u alertmanager -f
-```
+| Metric source | How | Port |
+|---------------|-----|------|
+| App server CPU/memory/disk | Node Exporter scraped remotely | 9100 |
+| App server HTTP endpoints | Blackbox Exporter probes | 80, 443, 3000, 3001 |
+| App server SSL certificates | Blackbox TLS probe | 443 |
+| App traces (OTel) | OTel Collector receives pushes | 4319 |
+| CI/CD DORA metrics | Pushgateway receives from GitHub Actions | 9091 |
 
 ## Access URLs
 
-After install, visit (replace YOUR_SERVER_IP):
+After `terraform apply` completes, outputs show:
 
-| URL | Purpose |
-|-----|---------|
-| http://YOUR_SERVER_IP:3000 | Grafana (admin/admin) |
-| http://YOUR_SERVER_IP:9090 | Prometheus |
-| http://YOUR_SERVER_IP:9093 | Alertmanager |
-| http://YOUR_SERVER_IP:9091 | Pushgateway |
-
-## Set Slack webhook after install
-
-```bash
-sudo sed -i 's|YOUR_SLACK_WEBHOOK_URL|https://hooks.slack.com/services/YOUR/WEBHOOK|g' \
-  /etc/alertmanager/alertmanager.yml
-sudo systemctl restart alertmanager
 ```
-
-## Deploying to a new server
-
-1. Clone the repo
-2. Run the install script — it auto-detects the server IP
-3. Set your Slack webhook
-
-The install script handles everything:
-- Downloads all binaries from GitHub releases
-- Creates system users for each service
-- Installs configs to /etc/
-- Creates data directories in /var/lib/
-- Installs and enables all systemd unit files
-- Starts all services
-
-## Restart a service after config change
-
-```bash
-# Example: after editing prometheus config
-sudo systemctl restart prometheus
-
-# Reload prometheus config without restart (hot reload)
-curl -X POST http://localhost:9090/-/reload
-```
-
-## Teardown
-
-```bash
-sudo bash uninstall.sh
+monitoring_server_ip = "x.x.x.x"
+grafana_url          = "http://x.x.x.x:3000"
+prometheus_url       = "http://x.x.x.x:9090"
+ssh_command          = "ssh -i your-key.pem ubuntu@x.x.x.x"
 ```
 
 ## Repository structure
 
 ```
 meetmind-observability/
-├── install.sh                  # One-command install
-├── uninstall.sh                # Clean teardown
+├── install.sh                     # One-command install (accepts APP_SERVER_IP)
+├── uninstall.sh                   # Clean teardown
 ├── scripts/
-│   └── status.sh               # Check all service statuses
-├── systemd/                    # Systemd unit files
-│   ├── prometheus.service
-│   ├── node_exporter.service
-│   ├── blackbox_exporter.service
-│   ├── alertmanager.service
-│   ├── pushgateway.service
-│   ├── loki.service
-│   ├── tempo.service
-│   └── otelcol.service
-├── config/                     # All service configs
-│   ├── prometheus.yml
-│   ├── alertmanager.yml
-│   ├── slack.tmpl
-│   ├── loki-config.yaml
-│   ├── tempo.yaml
-│   ├── otel-collector.yaml
-│   └── blackbox.yml
-├── alerts/                     # Alert rules (version-controlled)
-│   ├── infrastructure.yml
-│   ├── slo-burnrate.yml
-│   └── cicd.yml
-├── grafana/
-│   ├── provisioning/           # Datasource + dashboard discovery
-│   └── dashboards/             # 5 JSON dashboards
-├── runbooks/                   # One .md per alert rule
-├── slo-definitions.yml         # SLI/SLO definitions
-├── error-budget-policy.md      # Error budget policy
-└── post-incident-review.md     # Blameless PIR template
+│   ├── status.sh                  # Check all service statuses
+│   └── install-node-exporter-on-app-server.sh
+├── terraform/
+│   ├── main.tf                    # Creates EC2, security groups, EIP
+│   ├── variables.tf               # All configurable values
+│   ├── terraform.tfvars.example   # Copy to terraform.tfvars
+│   └── user_data.sh.tpl           # Cloud-init bootstrap script
+├── systemd/                       # Systemd unit files
+├── config/                        # Service configs (APP_SERVER_IP placeholder)
+├── alerts/                        # Alert rules
+├── grafana/                       # Dashboards and provisioning
+└── runbooks/                      # One per alert rule
 ```
-
-## Four Golden Signals PromQL
-
-```promql
-# Latency (p95)
-histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job))
-
-# Traffic
-sum(rate(http_requests_total[1m])) by (job)
-
-# Errors
-sum(rate(http_requests_total{status=~"5.."}[5m])) by (job) / sum(rate(http_requests_total[5m])) by (job)
-
-# Saturation
-1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
-```
-
-## SLO Targets
-
-| SLO | Target | Window | Error budget |
-|-----|--------|--------|--------------|
-| Availability | 99.5% | 30 days | 216 minutes |
-| Error rate | 99% success | 30 days | 432 minutes |
-| Latency p95 | < 500ms | Rolling | Alert-only |
-
-See [slo-definitions.yml](./slo-definitions.yml) and [error-budget-policy.md](./error-budget-policy.md).
