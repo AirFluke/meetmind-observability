@@ -39,8 +39,10 @@ jobs:
       - name: Build & test
         id: build
         run: |
-          echo "Running build and tests..."
-          # ── Add your actual build/test steps here ──────────────────────────
+          echo "Game Day: simulating build failure"
+          exit 1
+
+
 
       # ── Deploy to production ────────────────────────────────────────────────
       - name: Deploy to production
