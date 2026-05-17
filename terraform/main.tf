@@ -15,6 +15,7 @@ provider "aws" {
   alias  = "app_region"
   region = "eu-north-1"
 }
+
 # ── Data: get latest Ubuntu 24.04 AMI automatically ──────────────────────────
 data "aws_ami" "ubuntu" {
   most_recent = true
@@ -29,6 +30,11 @@ data "aws_ami" "ubuntu" {
     name   = "virtualization-type"
     values = ["hvm"]
   }
+}
+
+# ── Data: Fetch your existing, locked Elastic IP address ─────────────────────
+data "aws_eip" "monitoring" {
+  public_ip = "44.216.66.165"
 }
 
 # ── Security group for monitoring server ─────────────────────────────────────
@@ -105,7 +111,6 @@ resource "aws_security_group" "monitoring" {
   }
 }
 
-
 # ── EC2 monitoring server ─────────────────────────────────────────────────────
 resource "aws_instance" "monitoring" {
   ami                    = data.aws_ami.ubuntu.id
@@ -121,9 +126,9 @@ resource "aws_instance" "monitoring" {
 
   # Cloud-init: install git, clone repo, run install.sh
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
-    app_server_ip  = var.app_server_ip
-    slack_webhook  = var.slack_webhook
-    repo_url       = var.repo_url
+    app_server_ip    = var.app_server_ip
+    slack_webhook    = var.slack_webhook
+    repo_url         = var.repo_url
     grafana_password = var.grafana_password
   })
 
@@ -133,33 +138,29 @@ resource "aws_instance" "monitoring" {
   }
 }
 
-# ── Elastic IP so monitoring server IP stays stable across stop/start ─────────
-resource "aws_eip" "monitoring" {
-  instance = aws_instance.monitoring.id
-  domain   = "vpc"
-
-  tags = {
-    Name = "meetmind-monitoring-eip"
-  }
+# ── Associate the existing EIP with your newly built EC2 instance ────────────
+resource "aws_eip_association" "eip_assoc" {
+  instance_id   = aws_instance.monitoring.id
+  allocation_id = data.aws_eip.monitoring.id
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 output "monitoring_server_ip" {
-  value       = aws_eip.monitoring.public_ip
+  value       = data.aws_eip.monitoring.public_ip
   description = "Public IP of the monitoring server"
 }
 
 output "grafana_url" {
-  value       = "http://${aws_eip.monitoring.public_ip}:3000"
+  value       = "http://${data.aws_eip.monitoring.public_ip}:3000"
   description = "Grafana dashboard URL"
 }
 
 output "prometheus_url" {
-  value       = "http://${aws_eip.monitoring.public_ip}:9090"
+  value       = "http://${data.aws_eip.monitoring.public_ip}:9090"
   description = "Prometheus URL"
 }
 
 output "ssh_command" {
-  value       = "ssh -i ${var.key_name}.pem ubuntu@${aws_eip.monitoring.public_ip}"
+  value       = "ssh -i ${var.key_name}.pem ubuntu@${data.aws_eip.monitoring.public_ip}"
   description = "SSH command to connect to monitoring server"
 }
