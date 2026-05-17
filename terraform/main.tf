@@ -32,6 +32,12 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+# ── Data: Fetch your existing, locked Elastic IP address ─────────────────────
+# Replace the IP string below with your newly allocated AWS console IP
+data "aws_eip" "monitoring" {
+  public_ip = var.server_ip
+}
+
 # ── Security group for monitoring server ─────────────────────────────────────
 resource "aws_security_group" "monitoring" {
   name        = "meetmind-monitoring-sg"
@@ -133,33 +139,29 @@ resource "aws_instance" "monitoring" {
   }
 }
 
-# ── Elastic IP Resource ───────────────────────────────────────────────────────
-resource "aws_eip" "monitoring" {
-  instance = aws_instance.monitoring.id
-  domain   = "vpc"
-
-  tags = {
-    Name = "meetmind-monitoring-eip"
-  }
+# ── Explicitly associate the unmanaged static EIP to your new server ──────────
+resource "aws_eip_association" "eip_assoc" {
+  instance_id   = aws_instance.monitoring.id
+  allocation_id = data.aws_eip.monitoring.id
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 output "monitoring_server_ip" {
-  value       = aws_eip.monitoring.public_ip
+  value       = data.aws_eip.monitoring.public_ip
   description = "Public IP of the monitoring server"
 }
 
 output "grafana_url" {
-  value       = "http://${aws_eip.monitoring.public_ip}:3000"
+  value       = "http://${data.aws_eip.monitoring.public_ip}:3000"
   description = "Grafana dashboard URL"
 }
 
 output "prometheus_url" {
-  value       = "http://${aws_eip.monitoring.public_ip}:9090"
+  value       = "http://${data.aws_eip.monitoring.public_ip}:9090"
   description = "Prometheus URL"
 }
 
 output "ssh_command" {
-  value       = "ssh -i ${var.key_name}.pem ubuntu@${aws_eip.monitoring.public_ip}"
+  value       = "ssh -i ${var.key_name}.pem ubuntu@${data.aws_eip.monitoring.public_ip}"
   description = "SSH command to connect to monitoring server"
 }
