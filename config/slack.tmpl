@@ -14,14 +14,14 @@
 *Alert:* {{ .Labels.alertname }}
 *Severity:* {{ .Labels.severity | toUpper }}
 *Status:* {{ if eq $.Status "resolved" }}✅ RESOLVED{{ else }}🔥 FIRING{{ end }}
-*Host:* {{ .Labels.instance | default "N/A" }}
-*Value:* {{ .Annotations.value | default "see dashboard" }}
+*Host:* {{ if .Labels.instance }}{{ .Labels.instance }}{{ else }}N/A{{ end }}
+*Value:* {{ if .Annotations.value }}{{ .Annotations.value }}{{ else }}see dashboard{{ end }}
 *Summary:* {{ .Annotations.summary }}
 *Description:* {{ .Annotations.description }}
 
 *Links:*
-• <{{ .Annotations.dashboard_url | default "http://13.63.206.183:3000" }}|📊 Grafana Dashboard>
-• <{{ .Annotations.runbook_url | default "https://github.com/your-org/meetmind-observability/tree/main/runbooks" }}|📖 Runbook>
+• <{{ if .Annotations.dashboard_url }}{{ .Annotations.dashboard_url }}{{ else }}http://13.63.206.183:3000{{ end }}|📊 Grafana Dashboard>
+• <{{ if .Annotations.runbook_url }}{{ .Annotations.runbook_url }}{{ else }}https://github.com/your-org/meetmind-observability/tree/main/runbooks{{ end }}|📖 Runbook>
 
 *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
 {{ if eq $.Status "resolved" }}*Resolved:* {{ .EndsAt.Format "2006-01-02 15:04:05 UTC" }}{{ end }}
