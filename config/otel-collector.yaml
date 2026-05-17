@@ -14,6 +14,14 @@ processors:
     limit_mib: 512
     spike_limit_mib: 128
 
+  # ADD THIS PROCESSOR TO CONVERT OTEL ATTRIBUTES TO LOKI LABELS
+  transform:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["loki.attribute.labels"], ["service.name", "job"])
+
 exporters:
   otlp/tempo:
     endpoint: localhost:4317
@@ -34,7 +42,8 @@ service:
       exporters: [otlp/tempo]
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      # INJECT THE TRANSFORM PROCESSOR HERE
+      processors: [memory_limiter, transform, batch]
       exporters: [otlphttp/loki]
 
   telemetry:

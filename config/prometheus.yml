@@ -1,33 +1,71 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  external_labels:
+    cluster: meetmind-prod
+    env: production
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["localhost:9093"]
 
 rule_files:
-  - "alerts/*.yml"
+  - /etc/prometheus/alerts/infrastructure.yml
+  - /etc/prometheus/alerts/slo-burnrate.yml
+  - /etc/prometheus/alerts/cicd.yml
 
 scrape_configs:
-  - job_name: 'prometheus'
+  - job_name: prometheus
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
 
-  - job_name: 'node-exporter'
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["localhost:9093"]
+
+  - job_name: pushgateway
+    honor_labels: true
+    static_configs:
+      - targets: ["localhost:9091"]
+
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["localhost:8888"]
+
+  - job_name: node-exporter
     scrape_interval: 15s
     static_configs:
-      - targets: ['localhost:9100']
+      - targets: ["localhost:9100"]
         labels:
-          instance: 'monitoring-server'
-      - targets: ['localhost:9101']
+          instance: "monitoring-server"
+      - targets: ["localhost:9101"]
         labels:
-          instance: 'application-server'
+          instance: "application-server"
 
-  - job_name: 'blackbox-http'
+  - job_name: blackbox-http
     metrics_path: /probe
     params:
       module: [http_2xx]
     static_configs:
       - targets:
-          - http://localhost:3000
-          - http://localhost:9090/-/healthy
+          - http://localhost:3000        # Local Grafana
+          - http://localhost:9090/-/healthy # Local Prometheus
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
+
+  - job_name: blackbox-app-tunnel
+    metrics_path: /probe
+    params:
+      module: [http_tunnel_3xx]
+    static_configs:
+      - targets:
+          - http://127.0.0.1:8080        # App Server Tunnel
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -36,17 +74,17 @@ scrape_configs:
       - target_label: __address__
         replacement: 127.0.0.1:9115
 
-  - job_name: 'blackbox-app-tunnel'
+  - job_name: blackbox-ssl
     metrics_path: /probe
     params:
-      module: [http_tunnel_3xx]
+      module: [tls_connect]
     static_configs:
       - targets:
-          - http://127.0.0.1:8080
+          - 13.63.206.183:443
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: 127.0.0.1:9115
+        replacement: localhost:9115
