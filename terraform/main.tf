@@ -105,11 +105,6 @@ resource "aws_security_group" "monitoring" {
   }
 }
 
-data "aws_security_group" "app_sg" {
-  provider = aws.app_region # <-- This guarantees the lookup happens in Sweden
-  id       = var.app_server_security_group_id
-}
-
 
 # ── EC2 monitoring server ─────────────────────────────────────────────────────
 resource "aws_instance" "monitoring" {
