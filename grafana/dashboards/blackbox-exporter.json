@@ -8,9 +8,9 @@
   "panels": [
     {
       "id": 1,
-      "title": "Probe success rate",
+      "title": "Probe success rate (current)",
       "type": "stat",
-      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "prometheus" },
         "expr": "avg(probe_success) * 100",
@@ -18,11 +18,12 @@
       }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background"
+        "colorMode": "background",
+        "graphMode": "area"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
+          "unit": "percent", "decimals": 2,
           "thresholds": {
             "steps": [
               { "value": null, "color": "red" },
@@ -34,19 +35,77 @@
       }
     },
     {
+      "id": 10,
+      "title": "Availability SLO (30d)",
+      "type": "gauge",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "avg_over_time(probe_success[30d]) * 100",
+        "legendFormat": "30d SLO"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 99, "max": 100, "decimals": 3,
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 99.5, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Probed targets",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 5 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "count(probe_success)",
+        "legendFormat": "Targets"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "value": null, "color": "blue" }] } } }
+    },
+    {
+      "id": 12,
+      "title": "Currently down",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 5 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "count(probe_success == 0) OR vector(0)",
+        "legendFormat": "Down"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 1, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
       "id": 2,
-      "title": "SSL certificate expiry",
+      "title": "SSL certificate expiry countdown",
       "type": "bargauge",
-      "gridPos": { "x": 6, "y": 0, "w": 12, "h": 4 },
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 5 },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "prometheus" },
         "expr": "(probe_ssl_earliest_cert_expiry - time()) / 86400",
         "legendFormat": "{{ instance }}"
       }],
-      "options": { "orientation": "horizontal" },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
       "fieldConfig": {
         "defaults": {
-          "unit": "d",
+          "unit": "d", "decimals": 0,
           "thresholds": {
             "steps": [
               { "value": null, "color": "red" },
@@ -61,7 +120,7 @@
       "id": 3,
       "title": "Uptime / downtime timeline",
       "type": "status-history",
-      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 6 },
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 6 },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "prometheus" },
         "expr": "probe_success",
@@ -69,22 +128,31 @@
       }],
       "fieldConfig": {
         "defaults": {
-          "custom": { "fillOpacity": 70 },
+          "custom": { "fillOpacity": 80 },
           "thresholds": {
             "steps": [
               { "value": null, "color": "red" },
               { "value": 1, "color": "green" }
             ]
-          }
+          },
+          "mappings": [
+            { "options": { "0": { "text": "DOWN", "color": "red" } }, "type": "value" },
+            { "options": { "1": { "text": "UP", "color": "green" } }, "type": "value" }
+          ]
         }
       }
     },
     {
       "id": 4,
-      "title": "HTTP response time (p50 / p90 / p99)",
+      "title": "HTTP response time",
       "type": "timeseries",
-      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 8 },
+      "gridPos": { "x": 0, "y": 11, "w": 16, "h": 8 },
       "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "probe_http_duration_seconds{phase=\"resolve\"} * 1000",
+          "legendFormat": "DNS {{ instance }}"
+        },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "probe_http_duration_seconds{phase=\"connect\"} * 1000",
@@ -92,11 +160,79 @@
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "probe_duration_seconds * 1000",
-          "legendFormat": "Total {{ instance }}"
+          "expr": "probe_http_duration_seconds{phase=\"tls\"} * 1000",
+          "legendFormat": "TLS {{ instance }}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "probe_http_duration_seconds{phase=\"processing\"} * 1000",
+          "legendFormat": "Processing {{ instance }}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "probe_http_duration_seconds{phase=\"transfer\"} * 1000",
+          "legendFormat": "Transfer {{ instance }}"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "ms" } }
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "fillOpacity": 10, "lineWidth": 2, "stacking": { "mode": "normal" } }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Total probe duration",
+      "type": "timeseries",
+      "gridPos": { "x": 16, "y": 11, "w": 8, "h": 8 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "probe_duration_seconds * 1000",
+        "legendFormat": "{{ instance }}"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 500, "color": "yellow" },
+              { "value": 1000, "color": "red" }
+            ]
+          },
+          "custom": { "thresholdsStyle": { "mode": "line" }, "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "HTTP status codes",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 19, "w": 24, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "probe_http_status_code",
+        "legendFormat": "{{ instance }}"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 200, "color": "green" },
+              { "value": 300, "color": "yellow" },
+              { "value": 400, "color": "orange" },
+              { "value": 500, "color": "red" }
+            ]
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 38

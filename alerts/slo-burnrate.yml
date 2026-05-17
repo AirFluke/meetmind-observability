@@ -67,7 +67,7 @@ groups:
             Immediate action required.
           value: "{{ $value | humanize }}x burn rate"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/slo/slo-error-budget"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/slo-fast-burn.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/slo-fast-burn.md"
 
       # ── Slow burn (warning): 5% budget in 6h → 5x burn rate ────────────────
       - alert: SLOAvailabilitySlowBurn
@@ -83,7 +83,7 @@ groups:
             Investigate before it escalates.
           value: "{{ $value | humanize }}x burn rate"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/slo/slo-error-budget"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/slo-slow-burn.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/slo-slow-burn.md"
 
       # ── High p95 latency ─────────────────────────────────────────────────────
       - alert: HighLatencyWarning
@@ -96,4 +96,4 @@ groups:
           description: "p95 request latency is {{ $value | humanizeDuration }} (SLO: 500ms)"
           value: "{{ $value | humanizeDuration }}"
           dashboard_url: "http://YOUR_SERVER_IP:3000/d/slo/slo-error-budget"
-          runbook_url: "https://github.com/your-org/meetmind-observability/blob/main/runbooks/high-latency.md"
+          runbook_url: "https://github.com/AirFluke/meetmind-observability/blob/main/runbooks/high-latency.md"
