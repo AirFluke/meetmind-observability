@@ -11,6 +11,10 @@ provider "aws" {
   region = var.aws_region
 }
 
+provider "aws" {
+  alias  = "app_region"
+  region = "eu-north-1"
+}
 # ── Data: get latest Ubuntu 24.04 AMI automatically ──────────────────────────
 data "aws_ami" "ubuntu" {
   most_recent = true
@@ -75,10 +79,10 @@ resource "aws_security_group" "monitoring" {
     to_port     = 9091
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "Pushgateway — GitHub Actions needs this"
+    description = "Pushgateway - GitHub Actions needs this"
   }
 
-  # OTel collector — receives traces from app server
+  # OTel collector - receives traces from app server
   ingress {
     from_port   = 4319
     to_port     = 4320
@@ -101,18 +105,11 @@ resource "aws_security_group" "monitoring" {
   }
 }
 
-# ── Security group rule on APP server — allow monitoring to scrape Node Exporter
-# NOTE: You need to add var.app_server_security_group_id to your tfvars
-# This opens port 9100 on the app server only to the monitoring server
-resource "aws_security_group_rule" "allow_node_exporter_scrape" {
-  type                     = "ingress"
-  from_port                = 9100
-  to_port                  = 9100
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.monitoring.id
-  security_group_id        = var.app_server_security_group_id
-  description              = "Allow monitoring server to scrape Node Exporter"
+data "aws_security_group" "app_sg" {
+  provider = aws.app_region # <-- This guarantees the lookup happens in Sweden
+  id       = var.app_server_security_group_id
 }
+
 
 # ── EC2 monitoring server ─────────────────────────────────────────────────────
 resource "aws_instance" "monitoring" {

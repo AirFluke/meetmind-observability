@@ -37,10 +37,6 @@ variable "app_server_ip" {
   default     = "13.63.206.183"
 }
 
-variable "app_server_security_group_id" {
-  description = "Security group ID of the application server (to open Node Exporter port)"
-  type        = string
-}
 
 variable "slack_webhook" {
   description = "Slack webhook URL for Alertmanager notifications"
