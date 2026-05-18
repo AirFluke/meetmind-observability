@@ -15,7 +15,7 @@ on:
         default: ""
 
 env:
-  PUSHGATEWAY_URL: http://3.93.140.221:9091/
+  PUSHGATEWAY_URL: http://3.93.140.221:9091
   WORKFLOW_NAME: ${{ github.workflow }}
   BRANCH: ${{ github.ref_name }}
   COMMIT: ${{ github.sha }}
