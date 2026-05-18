@@ -15,7 +15,7 @@ on:
         default: ""
 
 env:
-  PUSHGATEWAY_URL: http://13.222.1.133:9091
+  PUSHGATEWAY_URL: http://3.93.140.221:9091/
   WORKFLOW_NAME: ${{ github.workflow }}
   BRANCH: ${{ github.ref_name }}
   COMMIT: ${{ github.sha }}
@@ -46,7 +46,7 @@ jobs:
       - name: Deploy to production
         id: deploy
         run: |
-          echo "Deploying to 13.222.1.133..."
+          echo "Deploying to 3.93.140.***..."
           # ── Add your actual deploy steps here ─────────────────────────────
 
       # ── DORA: SUCCESS metrics ───────────────────────────────────────────────
