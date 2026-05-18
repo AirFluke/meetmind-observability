@@ -3,8 +3,8 @@
   "title": "Unified Observability — Metrics, Logs, Traces",
   "tags": ["unified", "correlation", "traces", "logs"],
   "timezone": "browser",
-  "refresh": "30s",
-  "time": { "from": "now-15m", "to": "now" },
+  "refresh": "5s",
+  "time": { "from": "now-5m", "to": "now" },
   "panels": [
     {
       "id": 1,
@@ -19,6 +19,8 @@
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
+          "min": 0,
+          "max": 100,
           "thresholds": {
             "steps": [
               { "value": null, "color": "green" },
@@ -30,17 +32,25 @@
       }
     },
     {
+      "id": 2,
+      "title": "p95 latency",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
       "id": 3,
-      "title": "Logs — errors and warnings",
+      "title": "Logs — errors and warnings (with trace ID links to Tempo)",
       "type": "logs",
-      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 12 },
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 10 },
       "targets": [{
         "datasource": { "type": "loki", "uid": "loki" },
         "expr": "{job=\"meetmind-be\"}",
         "legendFormat": ""
       }],
       "options": {
-        "showLabels": true,
+        "showLabels": false,
         "showTime": true,
         "wrapLogMessage": true,
         "enableLogDetails": true,
@@ -49,14 +59,22 @@
       }
     },
     {
+      "id": 4,
+      "title": "Trace search — find the causing trace",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 6 },
+      "targets": [],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars" } } }
+    },
+    {
       "id": 5,
       "title": "Traffic (requests/s)",
       "type": "timeseries",
-      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
       "targets": [{
         "datasource": { "type": "loki", "uid": "loki" },
         "expr": "sum(count_over_time({job=\"meetmind-be\"} [$__interval]))",
-        "legendFormat": "meetmind-be throughput"
+        "legendFormat": "meetmind-be total throughput"
       }],
       "fieldConfig": { "defaults": { "unit": "reqps" } }
     },
@@ -64,20 +82,20 @@
       "id": 6,
       "title": "Saturation (CPU + memory)",
       "type": "timeseries",
-      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
-          "legendFormat": "CPU utilization"
+          "legendFormat": "CPU Saturation %"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "((sum(node_memory_MemTotal_bytes) - sum(node_memory_MemAvailable_bytes)) / sum(node_memory_MemTotal_bytes)) * 100",
-          "legendFormat": "Memory utilization"
+          "legendFormat": "Memory Saturation %"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } }
     }
   ],
   "schemaVersion": 38
