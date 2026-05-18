@@ -91,7 +91,7 @@ resource "aws_security_group" "monitoring" {
 
   # OTel collector - receives traces from app server
   ingress {
-    from_port   = 4319
+    from_port   = 4317
     to_port     = 4320
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]

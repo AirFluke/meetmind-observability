@@ -14,12 +14,15 @@ processors:
     limit_mib: 512
     spike_limit_mib: 128
 
-  # ADD THIS PROCESSOR TO CONVERT OTEL ATTRIBUTES TO LOKI LABELS
   transform:
     error_mode: ignore
     log_statements:
+      - context: resource
+        statements:
+          - set(attributes["service.name"], "meetmind-be") where attributes["service.name"] == nil
       - context: log
         statements:
+          - set(attributes["job"], body["SYSLOG_IDENTIFIER"]) where body["SYSLOG_IDENTIFIER"] != nil
           - set(attributes["loki.attribute.labels"], ["service.name", "job"])
 
 exporters:
@@ -27,12 +30,12 @@ exporters:
     endpoint: localhost:4317
     tls:
       insecure: true
-  otlphttp/loki:
-    endpoint: http://localhost:3100/otlp
+  loki:
+    endpoint: http://127.0.0.1:3100/loki/api/v1/push
     tls:
       insecure: true
   debug:
-    verbosity: basic
+    verbosity: detailed
 
 service:
   pipelines:
@@ -42,9 +45,8 @@ service:
       exporters: [otlp/tempo]
     logs:
       receivers: [otlp]
-      # INJECT THE TRANSFORM PROCESSOR HERE
       processors: [memory_limiter, transform, batch]
-      exporters: [otlphttp/loki]
+      exporters: [loki, debug]
 
   telemetry:
     metrics:
