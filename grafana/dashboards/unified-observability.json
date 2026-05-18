@@ -4,16 +4,7 @@
   "tags": ["unified", "correlation", "traces", "logs"],
   "timezone": "browser",
   "refresh": "30s",
-  "time": { "from": "now-1h", "to": "now" },
-  "annotations": {
-    "list": [{
-      "name": "Deployments",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "expr": "changes(deployment_total[2m]) > 0",
-      "iconColor": "blue",
-      "enable": true
-    }]
-  },
+  "time": { "from": "now-15m", "to": "now" },
   "panels": [
     {
       "id": 1,
@@ -21,8 +12,8 @@
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
       "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "slo:error_rate:ratio_rate5m * 100",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "expr": "(sum(count_over_time({job=\"meetmind-be\"} |~ \"(?i)(error|exception|fail|5[0-9]{2})\" [$__interval])) or vector(0)) / sum(count_over_time({job=\"meetmind-be\"} [$__interval])) * 100",
         "legendFormat": "Error rate %"
       }],
       "fieldConfig": {
@@ -34,77 +25,38 @@
               { "value": 1, "color": "red" }
             ]
           },
-          "custom": { "thresholdsStyle": { "mode": "line" } },
-          "links": [{
-            "title": "See correlated logs in Loki",
-            "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22expr%22:%22%7Blevel%3D~%22error%7Cwarn%22%7D%22%7D%5D%7D"
-          }]
-        }
-      }
-    },
-    {
-      "id": 2,
-      "title": "p95 latency",
-      "type": "timeseries",
-      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "slo:latency:p95_rate5m * 1000",
-        "legendFormat": "p95 latency (ms)"
-      }],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "thresholds": {
-            "steps": [
-              { "value": null, "color": "green" },
-              { "value": 500, "color": "red" }
-            ]
-          },
           "custom": { "thresholdsStyle": { "mode": "line" } }
         }
       }
     },
     {
       "id": 3,
-      "title": "Logs — errors and warnings (with trace ID links to Tempo)",
+      "title": "Logs — errors and warnings",
       "type": "logs",
-      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 10 },
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 12 },
       "targets": [{
         "datasource": { "type": "loki", "uid": "loki" },
-        "expr": "{level=~\"error|warn\"}",
+        "expr": "{job=\"meetmind-be\"}",
         "legendFormat": ""
       }],
       "options": {
         "showLabels": true,
         "showTime": true,
-        "wrapLogMessage": false,
+        "wrapLogMessage": true,
         "enableLogDetails": true,
         "dedupStrategy": "none",
         "sortOrder": "Descending"
       }
     },
     {
-      "id": 4,
-      "title": "Trace search — find the causing trace",
-      "type": "traces",
-      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
-      "targets": [{
-        "datasource": { "type": "tempo", "uid": "tempo" },
-        "queryType": "traceql",
-        "query": "{ status=error }",
-        "legendFormat": ""
-      }]
-    },
-    {
       "id": 5,
       "title": "Traffic (requests/s)",
       "type": "timeseries",
-      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 6 },
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
       "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(rate(http_requests_total[1m])) by (job)",
-        "legendFormat": "{{ job }}"
+        "datasource": { "type": "loki", "uid": "loki" },
+        "expr": "sum(count_over_time({job=\"meetmind-be\"} [$__interval]))",
+        "legendFormat": "meetmind-be throughput"
       }],
       "fieldConfig": { "defaults": { "unit": "reqps" } }
     },
@@ -112,20 +64,20 @@
       "id": 6,
       "title": "Saturation (CPU + memory)",
       "type": "timeseries",
-      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 6 },
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sli:node_cpu_saturation",
-          "legendFormat": "CPU saturation"
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "CPU utilization"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sli:node_memory_saturation",
-          "legendFormat": "Memory saturation"
+          "expr": "((sum(node_memory_MemTotal_bytes) - sum(node_memory_MemAvailable_bytes)) / sum(node_memory_MemTotal_bytes)) * 100",
+          "legendFormat": "Memory utilization"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 } }
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
     }
   ],
   "schemaVersion": 38
