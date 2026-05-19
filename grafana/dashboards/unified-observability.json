@@ -46,7 +46,7 @@
       "gridPos": { "x": 0, "y": 8, "w": 24, "h": 10 },
       "targets": [{
         "datasource": { "type": "loki", "uid": "loki" },
-        "expr": "{job=\"meetmind-be\"}",
+        "expr": "{job=\"meetmind-be\"} | json | line_format \"{{.body_MESSAGE}}\"",
         "legendFormat": ""
       }],
       "options": {
