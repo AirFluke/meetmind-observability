@@ -36,8 +36,13 @@
       "title": "p95 latency",
       "type": "timeseries",
       "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-      "targets": [],
-      "fieldConfig": { "defaults": { "unit": "ms" } }
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "quantile_over_time(0.95, probe_duration_seconds{job=\"blackbox-http\"}[5m])",
+        "legendFormat": "p95 Latency (Blackbox)"
+      }],
+      "fieldConfig": { 
+        "defaults": { "unit": "ms", "custom": { "drawStyle": "line" } } }
     },
     {
       "id": 3,
